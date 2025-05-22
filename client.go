@@ -1,16 +1,26 @@
 package dify
 
-type Client interface {
-}
+import "resty.dev/v3"
 
-type client struct {
-	baseUrl string
-	key     string
+type Client interface {
+	// Datasets
+
+	// CreateEmptyDataset 创建空知识库
+	CreateEmptyDataset()
 }
 
 func NewClient(baseUrl, key string) Client {
+	c := resty.New().SetBaseURL(baseUrl)
+	c.Header().Set("Authorization", "Bearer "+key)
 	return &client{
-		baseUrl: baseUrl,
-		key:     key,
+		c: c,
 	}
+}
+
+type client struct {
+	c *resty.Client
+}
+
+func (c *client) r() *resty.Request {
+	return c.c.R()
 }
