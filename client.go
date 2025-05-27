@@ -1,12 +1,15 @@
 package dify
 
-import "resty.dev/v3"
+import (
+	"context"
+	"resty.dev/v3"
+)
 
 type Client interface {
 	// Datasets
 
 	// CreateEmptyDataset 创建空知识库
-	CreateEmptyDataset(req *CreateEmptyDatasetRequest) (*Response[CreateEmptyDatasetResponse], error)
+	CreateEmptyDataset(ctx context.Context, req *CreateEmptyDatasetRequest) (*Response[CreateEmptyDatasetResponse], error)
 }
 
 func NewClient(baseUrl, key string) Client {

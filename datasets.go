@@ -1,8 +1,11 @@
 package dify
 
-func (c *client) CreateEmptyDataset(req *CreateEmptyDatasetRequest) (*Response[CreateEmptyDatasetResponse], error) {
+import "context"
+
+func (c *client) CreateEmptyDataset(ctx context.Context, req *CreateEmptyDatasetRequest) (*Response[CreateEmptyDatasetResponse], error) {
 	var resp = &CreateEmptyDatasetResponse{}
 	response, err := c.r().
+		WithContext(ctx).
 		SetContentType("application/json").
 		SetBody(&req).
 		SetResult(&resp).
