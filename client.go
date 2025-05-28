@@ -11,6 +11,8 @@ type Client interface {
 
 	// CreateEmptyDataset 创建空知识库
 	CreateEmptyDataset(ctx context.Context, req *CreateEmptyDatasetRequest) (*Response[CreateEmptyDatasetResponse], error)
+	// CreateByFile 通过文件创建文档
+	// 此接口基于已存在知识库，在此知识库的基础上通过文件创建新的文档
 	CreateByFile(ctx context.Context, req *CreateByFileRequest) (*Response[CreateByFileResponse], error)
 }
 
@@ -36,6 +38,20 @@ type client struct {
 
 func (c *client) r() *resty.Request {
 	return c.c.R()
+}
+
+func (r *Response[T]) String() string {
+	var v any
+	if r.Result != nil {
+		v = *r.Result
+	} else {
+		v = r
+	}
+	data, err := json.Marshal(v)
+	if err != nil {
+		return "error marshaling response: " + err.Error()
+	}
+	return string(data)
 }
 
 func buildResponse[T any](response *resty.Response, val *T) *Response[T] {
