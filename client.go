@@ -10,6 +10,7 @@ type Client interface {
 
 	// CreateEmptyDataset 创建空知识库
 	CreateEmptyDataset(ctx context.Context, req *CreateEmptyDatasetRequest) (*Response[CreateEmptyDatasetResponse], error)
+	CreateByFile(ctx context.Context, req *CreateByFileRequest) (*Response[CreateByFileResponse], error)
 }
 
 func NewClient(baseUrl, key string) Client {
