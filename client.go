@@ -2,6 +2,7 @@ package dify
 
 import (
 	"context"
+	"encoding/json"
 	"resty.dev/v3"
 )
 
@@ -23,7 +24,10 @@ func NewClient(baseUrl, key string) Client {
 
 type Response[T any] struct {
 	*resty.Response
-	Result *T
+	Result  *T
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Status  int    `json:"status"`
 }
 
 type client struct {
@@ -35,6 +39,24 @@ func (c *client) r() *resty.Request {
 }
 
 func buildResponse[T any](response *resty.Response, val *T) *Response[T] {
+	if response.IsError() {
+		var errResp struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+			Status  int    `json:"status"`
+		}
+		if err := json.Unmarshal(response.Bytes(), &errResp); err != nil {
+			errResp.Code = "unknown_error"
+			errResp.Message = "An unknown error occurred"
+		}
+		return &Response[T]{
+			Response: response,
+			Result:   nil,
+			Code:     errResp.Code,
+			Message:  errResp.Message,
+			Status:   errResp.Status,
+		}
+	}
 	resp := &Response[T]{
 		Response: response,
 		Result:   val,

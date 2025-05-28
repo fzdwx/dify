@@ -52,7 +52,7 @@ type RerankingModel struct {
 }
 
 type CreateEmptyDatasetResponse struct {
-	Id                     string            `json:"id"`
+	ID                     string            `json:"id"`
 	Name                   string            `json:"name"`
 	Description            string            `json:"description"`
 	Provider               string            `json:"provider"`
@@ -117,8 +117,9 @@ type ProcessRules struct {
 }
 
 type Segmentation struct {
-	Separator string `json:"separator"`  //  自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
-	MaxTokens int64  `json:"max_tokens"` // 最大长度（token）默认为 1000
+	Separator    string `json:"separator"`     //  自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+	MaxTokens    int64  `json:"max_tokens"`    // 最大长度（token）默认为 1000
+	ChunkOverlap int64  `json:"chunk_overlap"` // 分段重叠长度（token），默认为 0
 }
 
 type CreateByFileResponse struct {
