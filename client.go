@@ -16,6 +16,13 @@ type Client interface {
 	// 此接口基于已存在知识库，在此知识库的基础上通过文件创建新的文档
 	CreateByFile(ctx context.Context, req *CreateByFileRequest) (*Response[CreateByFileResponse], error)
 
+	// Apps
+
+	// CreateChatApp 创建聊天应用
+	CreateChatApp(ctx context.Context, req *CreateChatAppRequest) (*Response[CreateChatAppResponse], error)
+	// UpdateAppModelConfig 更新应用模型配置
+	UpdateAppModelConfig(ctx context.Context, req *UpdateAppModelConfigRequest) (*Response[UpdateAppModelConfigResponse], error)
+
 	// RefreshDatasetAPIKey 刷新 datasets API key（当 console token 过期时可能需要）
 	RefreshDatasetAPIKey() error
 }
