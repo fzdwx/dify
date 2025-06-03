@@ -46,6 +46,123 @@ func getOrCreateDatasetAPIKey(consoleClient *resty.Client) (string, error) {
 	return newKeyResp.Token, nil
 }
 
+// getOrCreateDatasetAPIKeyWithRetry gets existing dataset API keys or creates a new one with retry on token expiry
+func (c *client) getOrCreateDatasetAPIKeyWithRetry() (string, error) {
+	var result string
+	var resultErr error
+
+	_, err := c.executeWithRetry(func() (*resty.Response, error) {
+		// First, try to get existing API keys
+		var keysResp DatasetAPIKeysResponse
+		resp, err := c.consoleClient.R().
+			SetContentType("application/json").
+			SetResult(&keysResp).
+			Get("/console/api/datasets/api-keys")
+
+		if err != nil {
+			resultErr = fmt.Errorf("failed to get dataset API keys: %w", err)
+			return resp, err
+		}
+
+		if resp.IsError() {
+			resultErr = fmt.Errorf("failed to get dataset API keys with status %d: %s", resp.StatusCode(), resp.String())
+			return resp, nil // Don't return error here, let executeWithRetry handle 401
+		}
+
+		// If we have existing keys, use the first one
+		if len(keysResp.Data) > 0 {
+			result = keysResp.Data[0].Token
+			return resp, nil
+		}
+
+		// No existing keys, create a new one
+		var newKeyResp DatasetAPIKey
+		resp, err = c.consoleClient.R().
+			SetContentType("application/json").
+			SetResult(&newKeyResp).
+			Post("/console/api/datasets/api-keys")
+
+		if err != nil {
+			resultErr = fmt.Errorf("failed to create dataset API key: %w", err)
+			return resp, err
+		}
+
+		if resp.IsError() {
+			resultErr = fmt.Errorf("failed to create dataset API key with status %d: %s", resp.StatusCode(), resp.String())
+			return resp, nil // Don't return error here, let executeWithRetry handle 401
+		}
+
+		result = newKeyResp.Token
+		return resp, nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if resultErr != nil {
+		return "", resultErr
+	}
+
+	return result, nil
+}
+
+// refreshAccessToken refreshes the access token using the refresh token
+func (c *client) refreshAccessToken() error {
+	refreshReq := &RefreshTokenRequest{
+		RefreshToken: c.refreshToken,
+	}
+
+	var refreshResp RefreshTokenResponse
+	response, err := c.consoleClient.R().
+		SetContentType("application/json").
+		SetBody(refreshReq).
+		SetResult(&refreshResp).
+		Post("/console/api/refresh-token")
+
+	if err != nil {
+		return fmt.Errorf("refresh token request failed: %w", err)
+	}
+
+	if response.IsError() {
+		return fmt.Errorf("refresh token failed with status %d: %s", response.StatusCode(), response.String())
+	}
+
+	if refreshResp.Result != "success" {
+		return fmt.Errorf("refresh token failed: %s", refreshResp.Result)
+	}
+
+	// Update the console client with new access token
+	c.consoleClient.Header().Set("Authorization", "Bearer "+refreshResp.Data.AccessToken)
+
+	// Update the refresh token
+	c.refreshToken = refreshResp.Data.RefreshToken
+
+	return nil
+}
+
+// executeWithRetry executes a request with automatic token refresh on 401 errors
+func (c *client) executeWithRetry(requestFunc func() (*resty.Response, error)) (*resty.Response, error) {
+	// First attempt
+	response, err := requestFunc()
+	if err != nil {
+		return response, err
+	}
+
+	// Check if we got a 401 unauthorized error
+	if response.StatusCode() == 401 {
+		// Try to refresh the access token
+		if refreshErr := c.refreshAccessToken(); refreshErr != nil {
+			return response, fmt.Errorf("failed to refresh token: %w", refreshErr)
+		}
+
+		// Retry the request with the new token
+		response, err = requestFunc()
+	}
+
+	return response, err
+}
+
 func buildResponse[T any](response *resty.Response, val *T) *Response[T] {
 	if response.IsError() {
 		var errResp struct {
@@ -101,4 +218,18 @@ type DatasetAPIKey struct {
 // DatasetAPIKeysResponse represents the response when getting dataset API keys
 type DatasetAPIKeysResponse struct {
 	Data []DatasetAPIKey `json:"data"`
+}
+
+// RefreshTokenRequest represents the refresh token request payload
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+// RefreshTokenResponse represents the refresh token response
+type RefreshTokenResponse struct {
+	Result string `json:"result"`
+	Data   struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+	} `json:"data"`
 }

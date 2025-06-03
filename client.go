@@ -15,6 +15,9 @@ type Client interface {
 	// CreateByFile 通过文件创建文档
 	// 此接口基于已存在知识库，在此知识库的基础上通过文件创建新的文档
 	CreateByFile(ctx context.Context, req *CreateByFileRequest) (*Response[CreateByFileResponse], error)
+
+	// RefreshDatasetAPIKey 刷新 datasets API key（当 console token 过期时可能需要）
+	RefreshDatasetAPIKey() error
 }
 
 func NewClient(baseUrl, email, password string) (Client, error) {
@@ -65,6 +68,8 @@ func NewClient(baseUrl, email, password string) (Client, error) {
 		datasetsClient: datasetsClient,
 		consoleClient:  consoleClient,
 		datasetAPIKey:  datasetAPIKey,
+		refreshToken:   loginResp.Data.RefreshToken,
+		baseUrl:        baseUrl,
 	}, nil
 }
 
@@ -80,10 +85,39 @@ type client struct {
 	datasetsClient *resty.Client
 	consoleClient  *resty.Client // 用于 console API 调用
 	datasetAPIKey  string        // datasets API key
+	refreshToken   string        // refresh token for console API
+	baseUrl        string        // base URL for API calls
 }
 
 func (c *client) datasets() *resty.Request {
 	return c.datasetsClient.R()
+}
+
+// datasetsWithRetry returns a request with automatic token refresh on 401 errors
+func (c *client) datasetsWithRetry() *resty.Request {
+	return c.datasetsClient.R()
+}
+
+// consoleWithRetry returns a console request with automatic token refresh on 401 errors
+func (c *client) consoleWithRetry() *resty.Request {
+	return c.consoleClient.R()
+}
+
+// RefreshDatasetAPIKey implements the Client interface
+func (c *client) RefreshDatasetAPIKey() error {
+	// Get or create a new dataset API key with retry
+	newAPIKey, err := c.getOrCreateDatasetAPIKeyWithRetry()
+	if err != nil {
+		return fmt.Errorf("failed to refresh dataset API key: %w", err)
+	}
+
+	// Update the dataset API key
+	c.datasetAPIKey = newAPIKey
+
+	// Update the datasets client with the new API key
+	c.datasetsClient.Header().Set("Authorization", "Bearer "+newAPIKey)
+
+	return nil
 }
 
 func (r *Response[T]) String() string {
