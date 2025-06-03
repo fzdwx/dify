@@ -3,6 +3,7 @@ package dify
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"resty.dev/v3"
 )
 
@@ -16,12 +17,59 @@ type Client interface {
 	CreateByFile(ctx context.Context, req *CreateByFileRequest) (*Response[CreateByFileResponse], error)
 }
 
-func NewClient(baseUrl, key string) Client {
+// LoginRequest represents the login request payload
+type LoginRequest struct {
+	Email      string `json:"email"`
+	Password   string `json:"password"`
+	Language   string `json:"language"`
+	RememberMe bool   `json:"remember_me"`
+}
+
+// LoginResponse represents the login response
+type LoginResponse struct {
+	Result string `json:"result"`
+	Data   struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+	} `json:"data"`
+}
+
+func NewClient(baseUrl, email, password string) (Client, error) {
 	c := resty.New().SetBaseURL(baseUrl)
-	c.Header().Set("Authorization", "Bearer "+key)
+
+	// Perform login to get access token
+	loginReq := &LoginRequest{
+		Email:      email,
+		Password:   password,
+		Language:   "zh-Hans",
+		RememberMe: true,
+	}
+
+	var loginResp LoginResponse
+	response, err := c.R().
+		SetContentType("application/json").
+		SetBody(loginReq).
+		SetResult(&loginResp).
+		Post("/console/api/login")
+
+	if err != nil {
+		return nil, fmt.Errorf("login request failed: %w", err)
+	}
+
+	if response.IsError() {
+		return nil, fmt.Errorf("login failed with status %d: %s", response.StatusCode(), response.String())
+	}
+
+	if loginResp.Result != "success" {
+		return nil, fmt.Errorf("login failed: %s", loginResp.Result)
+	}
+
+	// Set the authorization header with the access token
+	c.Header().Set("Authorization", "Bearer "+loginResp.Data.AccessToken)
+
 	return &client{
 		c: c,
-	}
+	}, nil
 }
 
 type Response[T any] struct {

@@ -7,7 +7,10 @@ import (
 )
 
 func TestDatasets(t *testing.T) {
-	c := NewClient("http://192.168.50.21:88/v1", "dataset-22i7BMiiZaobMzRTLffm3mDX")
+	c, err := NewClient("http://192.168.50.21:88", "likelovec@gmail.com", "Pwd123456")
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := context.Background()
 	resp, err := c.CreateEmptyDataset(ctx, &CreateEmptyDatasetRequest{
 		Name:              "测试111",
