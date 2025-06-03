@@ -89,17 +89,15 @@ type client struct {
 	baseUrl        string        // base URL for API calls
 }
 
+// datasets returns a request for datasets API (/v1/datasets/)
+// These APIs use datasets API key and do NOT need refresh token
 func (c *client) datasets() *resty.Request {
 	return c.datasetsClient.R()
 }
 
-// datasetsWithRetry returns a request with automatic token refresh on 401 errors
-func (c *client) datasetsWithRetry() *resty.Request {
-	return c.datasetsClient.R()
-}
-
-// consoleWithRetry returns a console request with automatic token refresh on 401 errors
-func (c *client) consoleWithRetry() *resty.Request {
+// console returns a request for console API (/console/api/)
+// These APIs use access token and NEED refresh token support
+func (c *client) console() *resty.Request {
 	return c.consoleClient.R()
 }
 

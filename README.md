@@ -70,11 +70,19 @@ func main() {
 
 ### Token 过期处理
 
-当遇到 `{"code": "unauthorized", "message": "Token has expired.", "status": 401}` 错误时：
+客户端使用两种不同的认证机制：
 
-- Console API 调用会自动使用 refresh token 刷新 access token 并重试
-- Datasets API 调用使用独立的 API key，通常不会过期
-- 如果需要，可以手动调用 `RefreshDatasetAPIKey()` 方法
+#### Console API (`/console/api/` 开头的接口)
+- 使用 **access token** 认证
+- Token 会过期，返回 `{"code": "unauthorized", "message": "Token has expired.", "status": 401}`
+- **自动处理**: 遇到 401 错误时自动使用 refresh token 刷新并重试
+- 涉及的操作：获取/创建 datasets API keys
+
+#### Datasets API (`/v1/datasets/` 开头的接口)
+- 使用 **datasets API key** 认证
+- API key 通常不会过期
+- **无需 refresh token**: 直接使用 datasets API key，不涉及 token 刷新
+- 涉及的操作：创建数据集、上传文档等
 
 ## API 参考
 

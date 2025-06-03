@@ -46,12 +46,13 @@ func getOrCreateDatasetAPIKey(consoleClient *resty.Client) (string, error) {
 	return newKeyResp.Token, nil
 }
 
-// getOrCreateDatasetAPIKeyWithRetry gets existing dataset API keys or creates a new one with retry on token expiry
+// getOrCreateDatasetAPIKeyWithRetry gets existing dataset API keys or creates a new one with retry on console token expiry
+// This method uses console API (/console/api/datasets/api-keys) so it needs refresh token support
 func (c *client) getOrCreateDatasetAPIKeyWithRetry() (string, error) {
 	var result string
 	var resultErr error
 
-	_, err := c.executeWithRetry(func() (*resty.Response, error) {
+	_, err := c.executeConsoleWithRetry(func() (*resty.Response, error) {
 		// First, try to get existing API keys
 		var keysResp DatasetAPIKeysResponse
 		resp, err := c.consoleClient.R().
@@ -141,19 +142,20 @@ func (c *client) refreshAccessToken() error {
 	return nil
 }
 
-// executeWithRetry executes a request with automatic token refresh on 401 errors
-func (c *client) executeWithRetry(requestFunc func() (*resty.Response, error)) (*resty.Response, error) {
+// executeConsoleWithRetry executes a console API request with automatic token refresh on 401 errors
+// This should only be used for /console/api/ endpoints
+func (c *client) executeConsoleWithRetry(requestFunc func() (*resty.Response, error)) (*resty.Response, error) {
 	// First attempt
 	response, err := requestFunc()
 	if err != nil {
 		return response, err
 	}
 
-	// Check if we got a 401 unauthorized error
+	// Check if we got a 401 unauthorized error (only for console API)
 	if response.StatusCode() == 401 {
 		// Try to refresh the access token
 		if refreshErr := c.refreshAccessToken(); refreshErr != nil {
-			return response, fmt.Errorf("failed to refresh token: %w", refreshErr)
+			return response, fmt.Errorf("failed to refresh console access token: %w", refreshErr)
 		}
 
 		// Retry the request with the new token
