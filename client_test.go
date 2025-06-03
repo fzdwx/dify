@@ -2,8 +2,10 @@ package dify
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestDatasets(t *testing.T) {
@@ -12,9 +14,11 @@ func TestDatasets(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
+	// Use timestamp to create unique dataset name
+	uniqueName := fmt.Sprintf("测试数据集_%d", time.Now().Unix())
 	resp, err := c.CreateEmptyDataset(ctx, &CreateEmptyDatasetRequest{
-		Name:              "测试111",
-		Description:       "123123123123",
+		Name:              uniqueName,
+		Description:       "测试数据集描述",
 		IndexingTechnique: IndexingTechniqueEconomy,
 		Permission:        DatasetPermissionAllTeamMembers,
 		Provider:          DatasetProviderVendor,

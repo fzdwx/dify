@@ -9,7 +9,7 @@ import (
 
 func (c *client) CreateEmptyDataset(ctx context.Context, req *CreateEmptyDatasetRequest) (*Response[CreateEmptyDatasetResponse], error) {
 	var resp = &CreateEmptyDatasetResponse{}
-	response, err := c.r().
+	response, err := c.datasets().
 		WithContext(ctx).
 		SetContentType("application/json").
 		SetBody(&req).
@@ -77,7 +77,7 @@ func (c *client) CreateByFile(ctx context.Context, req *CreateByFileRequest) (*R
 		return nil, fmt.Errorf("failed to marshal CreateByFileRequest: %w", jsonErr)
 	}
 	var resp = &CreateByFileResponse{}
-	response, err := c.r().
+	response, err := c.datasets().
 		WithContext(ctx).
 		SetFileReader("file", req.Filename, req.FileBody).
 		SetFormData(map[string]string{

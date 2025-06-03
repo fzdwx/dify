@@ -17,25 +17,9 @@ type Client interface {
 	CreateByFile(ctx context.Context, req *CreateByFileRequest) (*Response[CreateByFileResponse], error)
 }
 
-// LoginRequest represents the login request payload
-type LoginRequest struct {
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	Language   string `json:"language"`
-	RememberMe bool   `json:"remember_me"`
-}
-
-// LoginResponse represents the login response
-type LoginResponse struct {
-	Result string `json:"result"`
-	Data   struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-	} `json:"data"`
-}
-
 func NewClient(baseUrl, email, password string) (Client, error) {
-	c := resty.New().SetBaseURL(baseUrl)
+	// Create console client for authentication and API key management
+	consoleClient := resty.New().SetBaseURL(baseUrl)
 
 	// Perform login to get access token
 	loginReq := &LoginRequest{
@@ -46,7 +30,7 @@ func NewClient(baseUrl, email, password string) (Client, error) {
 	}
 
 	var loginResp LoginResponse
-	response, err := c.R().
+	response, err := consoleClient.R().
 		SetContentType("application/json").
 		SetBody(loginReq).
 		SetResult(&loginResp).
@@ -64,11 +48,23 @@ func NewClient(baseUrl, email, password string) (Client, error) {
 		return nil, fmt.Errorf("login failed: %s", loginResp.Result)
 	}
 
-	// Set the authorization header with the access token
-	c.Header().Set("Authorization", "Bearer "+loginResp.Data.AccessToken)
+	// Set the authorization header with the access token for console operations
+	consoleClient.Header().Set("Authorization", "Bearer "+loginResp.Data.AccessToken)
+
+	// Get or create datasets API key
+	datasetAPIKey, err := getOrCreateDatasetAPIKey(consoleClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dataset API key: %w", err)
+	}
+
+	// Create datasets client with API key
+	datasetsClient := resty.New().SetBaseURL(baseUrl + "/v1")
+	datasetsClient.Header().Set("Authorization", "Bearer "+datasetAPIKey)
 
 	return &client{
-		c: c,
+		datasetsClient: datasetsClient,
+		consoleClient:  consoleClient,
+		datasetAPIKey:  datasetAPIKey,
 	}, nil
 }
 
@@ -81,11 +77,13 @@ type Response[T any] struct {
 }
 
 type client struct {
-	c *resty.Client
+	datasetsClient *resty.Client
+	consoleClient  *resty.Client // 用于 console API 调用
+	datasetAPIKey  string        // datasets API key
 }
 
-func (c *client) r() *resty.Request {
-	return c.c.R()
+func (c *client) datasets() *resty.Request {
+	return c.datasetsClient.R()
 }
 
 func (r *Response[T]) String() string {
@@ -100,30 +98,4 @@ func (r *Response[T]) String() string {
 		return "error marshaling response: " + err.Error()
 	}
 	return string(data)
-}
-
-func buildResponse[T any](response *resty.Response, val *T) *Response[T] {
-	if response.IsError() {
-		var errResp struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
-			Status  int    `json:"status"`
-		}
-		if err := json.Unmarshal(response.Bytes(), &errResp); err != nil {
-			errResp.Code = "unknown_error"
-			errResp.Message = "An unknown error occurred"
-		}
-		return &Response[T]{
-			Response: response,
-			Result:   nil,
-			Code:     errResp.Code,
-			Message:  errResp.Message,
-			Status:   errResp.Status,
-		}
-	}
-	resp := &Response[T]{
-		Response: response,
-		Result:   val,
-	}
-	return resp
 }
