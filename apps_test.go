@@ -127,3 +127,58 @@ func TestCreateChatAppWithDataset(t *testing.T) {
 
 	t.Log("Successfully updated app model config with dataset binding")
 }
+
+func TestCreateAppAccessToken(t *testing.T) {
+	// Create client
+	c, err := NewClient("http://192.168.50.21:88", "likelovec@gmail.com", "Pwd123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+
+	// First create a chat app
+	appName := fmt.Sprintf("测试应用_for_token_%d", time.Now().Unix())
+	appResp, err := c.CreateChatApp(ctx, &CreateChatAppRequest{
+		Name: appName,
+	})
+
+	if err != nil {
+		t.Fatal("Failed to create chat app:", err)
+	}
+
+	if !appResp.IsSuccess() {
+		t.Fatal("Create chat app failed:", appResp.Message)
+	}
+
+	t.Logf("Successfully created chat app: %s (ID: %s)", appResp.Result.Name, appResp.Result.ID)
+
+	// Create an access token for the app
+	tokenResp, err := c.CreateAppAccessToken(ctx, &CreateAppAccessTokenRequest{
+		AppID: appResp.Result.ID,
+	})
+
+	if err != nil {
+		t.Fatal("Failed to create app access token:", err)
+	}
+
+	if !tokenResp.IsSuccess() {
+		t.Fatal("Create app access token failed:", tokenResp.Message)
+	}
+
+	t.Logf("Successfully created app access token: %s (ID: %s, Type: %s)",
+		tokenResp.Result.Token, tokenResp.Result.ID, tokenResp.Result.Type)
+
+	// Verify the token format
+	if tokenResp.Result.Type != "app" {
+		t.Errorf("Expected token type 'app', got '%s'", tokenResp.Result.Type)
+	}
+
+	if len(tokenResp.Result.Token) == 0 {
+		t.Error("Token should not be empty")
+	}
+
+	if tokenResp.Result.CreatedAt == 0 {
+		t.Error("CreatedAt should not be zero")
+	}
+}

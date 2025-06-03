@@ -22,6 +22,8 @@ type Client interface {
 	CreateChatApp(ctx context.Context, req *CreateChatAppRequest) (*Response[CreateChatAppResponse], error)
 	// UpdateAppModelConfig 更新应用模型配置
 	UpdateAppModelConfig(ctx context.Context, req *UpdateAppModelConfigRequest) (*Response[UpdateAppModelConfigResponse], error)
+	// CreateAppAccessToken 创建应用访问令牌
+	CreateAppAccessToken(ctx context.Context, req *CreateAppAccessTokenRequest) (*Response[CreateAppAccessTokenResponse], error)
 
 	// RefreshDatasetAPIKey 刷新 datasets API key（当 console token 过期时可能需要）
 	RefreshDatasetAPIKey() error

@@ -130,6 +130,45 @@ func (c *client) UpdateAppModelConfig(ctx context.Context, req *UpdateAppModelCo
 	return buildResponse[UpdateAppModelConfigResponse](finalResponse, resp), nil
 }
 
+// CreateAppAccessToken 创建应用访问令牌
+func (c *client) CreateAppAccessToken(ctx context.Context, req *CreateAppAccessTokenRequest) (*Response[CreateAppAccessTokenResponse], error) {
+	var resultErr error
+	var resp = &CreateAppAccessTokenResponse{}
+	var finalResponse *resty.Response
+
+	_, err := c.executeConsoleWithRetry(func() (*resty.Response, error) {
+		response, err := c.console().
+			WithContext(ctx).
+			SetContentType("application/json").
+			SetResult(&resp).
+			Post(fmt.Sprintf("/console/api/apps/%s/api-keys", req.AppID))
+
+		finalResponse = response
+
+		if err != nil {
+			resultErr = fmt.Errorf("failed to create app access token: %w", err)
+			return response, err
+		}
+
+		if response.IsError() {
+			resultErr = fmt.Errorf("failed to create app access token with status %d: %s", response.StatusCode(), response.String())
+			return response, nil // Don't return error here, let executeConsoleWithRetry handle 401
+		}
+
+		return response, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if resultErr != nil {
+		return nil, resultErr
+	}
+
+	return buildResponse[CreateAppAccessTokenResponse](finalResponse, resp), nil
+}
+
 // 辅助函数
 func getDefaultFileUploadConfig() FileUploadConfig {
 	return FileUploadConfig{

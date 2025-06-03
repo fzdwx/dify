@@ -153,3 +153,17 @@ type DatasetInfo struct {
 	Enabled bool   `json:"enabled"`
 	ID      string `json:"id"`
 }
+
+// CreateAppAccessTokenRequest 创建应用访问令牌请求
+type CreateAppAccessTokenRequest struct {
+	AppID string `json:"-"` // 应用ID，不包含在JSON中
+}
+
+// CreateAppAccessTokenResponse 创建应用访问令牌响应
+type CreateAppAccessTokenResponse struct {
+	ID         string `json:"id"`
+	Type       string `json:"type"`
+	Token      string `json:"token"`
+	LastUsedAt *int64 `json:"last_used_at"`
+	CreatedAt  int64  `json:"created_at"`
+}

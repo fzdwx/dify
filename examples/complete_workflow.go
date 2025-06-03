@@ -84,8 +84,24 @@ func main() {
 
 	fmt.Printf("✅ 成功更新应用配置，已绑定数据集\n")
 
-	// 4. 创建另一个不绑定数据集的应用
-	fmt.Println("\n=== 创建不绑定数据集的应用 ===")
+	// 4. 创建应用访问令牌
+	fmt.Println("\n=== 创建应用访问令牌 ===")
+	tokenResp, err := client.CreateAppAccessToken(ctx, &dify.CreateAppAccessTokenRequest{
+		AppID: appResp.Result.ID,
+	})
+
+	if err != nil {
+		log.Fatal("创建应用访问令牌失败:", err)
+	}
+
+	if !tokenResp.IsSuccess() {
+		log.Fatal("创建应用访问令牌失败:", tokenResp.Message)
+	}
+
+	fmt.Printf("✅ 成功创建应用访问令牌: %s\n", tokenResp.Result.Token)
+
+	// 5. 创建另一个不绑定数据集的应用
+	fmt.Println("\n=== 创建简单应用 ===")
 	simpleAppName := fmt.Sprintf("简单助手_%d", time.Now().Unix())
 	simpleAppResp, err := client.CreateChatApp(ctx, &dify.CreateChatAppRequest{
 		Name: simpleAppName,
@@ -101,7 +117,7 @@ func main() {
 
 	fmt.Printf("✅ 成功创建简单应用: %s (ID: %s)\n", simpleAppResp.Result.Name, simpleAppResp.Result.ID)
 
-	// 5. 更新简单应用配置（只设置模型，不绑定数据集）
+	// 6. 更新简单应用配置（只设置模型，不绑定数据集）
 	updateSimpleResp, err := client.UpdateAppModelConfig(ctx, &dify.UpdateAppModelConfigRequest{
 		AppID: simpleAppResp.Result.ID,
 		Model: dify.ModelConfig{
@@ -123,8 +139,26 @@ func main() {
 
 	fmt.Printf("✅ 成功更新简单应用配置，未绑定数据集\n")
 
-	fmt.Println("\n🎉 所有操作完成！")
+	// 7. 为简单应用创建访问令牌
+	simpleTokenResp, err := client.CreateAppAccessToken(ctx, &dify.CreateAppAccessTokenRequest{
+		AppID: simpleAppResp.Result.ID,
+	})
+
+	if err != nil {
+		log.Fatal("创建简单应用访问令牌失败:", err)
+	}
+
+	if !simpleTokenResp.IsSuccess() {
+		log.Fatal("创建简单应用访问令牌失败:", simpleTokenResp.Message)
+	}
+
+	fmt.Printf("✅ 成功创建简单应用访问令牌: %s\n", simpleTokenResp.Result.Token)
+
+	fmt.Println("\n🎉 完整工作流程完成！")
+	fmt.Println("\n📋 总结:")
 	fmt.Printf("数据集ID: %s\n", datasetResp.Result.ID)
 	fmt.Printf("带数据集的应用ID: %s\n", appResp.Result.ID)
+	fmt.Printf("带数据集的应用访问令牌: %s\n", tokenResp.Result.Token)
 	fmt.Printf("简单应用ID: %s\n", simpleAppResp.Result.ID)
+	fmt.Printf("简单应用访问令牌: %s\n", simpleTokenResp.Result.Token)
 }
