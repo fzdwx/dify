@@ -182,3 +182,66 @@ func TestCreateAppAccessToken(t *testing.T) {
 		t.Error("CreatedAt should not be zero")
 	}
 }
+
+func TestCallWorkflowAppBlocking(t *testing.T) {
+	// Create client
+	c, err := NewClient("http://192.168.50.21:88", "likelovec@gmail.com", "Pwd123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+
+	resp, err := c.CallWorkflowAppBlocking(ctx, &CallWorkflowRequest{
+		Inputs: map[string]interface{}{
+			"question":           "设备运行状态分类汇总统计",
+			"user_id":            0,
+			"knowledge_base_ids": "9",
+			"internet_search":    1,
+			"thinking":           1,
+		},
+		ResponseMode: ResponseModeBlocking,
+		User:         "test_user",
+		Token:        "app-SwD6MzpqOwiOB2tEyS074VIi",
+	})
+	if err != nil {
+		t.Fatal("Failed to call workflow app blocking:", err)
+	}
+	if !resp.IsSuccess() {
+		t.Fatal("Call workflow app blocking failed:", resp.Message)
+	}
+	t.Logf("Successfully called workflow app blocking: %s", resp.Result.Data.Outputs["text"])
+}
+
+func TestCallWorkflowAppStreaming(t *testing.T) {
+	// Create client
+	c, err := NewClient("http://192.168.50.21:88", "likelovec@gmail.com", "Pwd123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+
+	resp, err := c.CallWorkflowAppStreaming(ctx, &CallWorkflowRequest{
+		Inputs: map[string]interface{}{
+			"question":           "设备运行状态分类汇总统计",
+			"user_id":            0,
+			"knowledge_base_ids": "9",
+			"internet_search":    1,
+			"thinking":           1,
+		},
+		ResponseMode: ResponseModeStreaming,
+		User:         "test_user",
+		Token:        "app-SwD6MzpqOwiOB2tEyS074VIi",
+	})
+	if err != nil {
+		t.Fatal("Failed to call workflow app blocking:", err)
+	}
+
+	for chunk := range resp {
+		if chunk == nil {
+			t.Fatal("Received nil chunk from streaming response")
+		}
+		t.Logf("Received chunk: %s", chunk.Data.Text)
+	}
+}

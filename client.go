@@ -27,6 +27,12 @@ type Client interface {
 
 	// RefreshDatasetAPIKey 刷新 datasets API key（当 console token 过期时可能需要）
 	RefreshDatasetAPIKey() error
+
+	// CallWorkflowAppBlocking 调用工作流应用，返回阻塞响应
+	CallWorkflowAppBlocking(ctx context.Context, req *CallWorkflowRequest) (*Response[CallWorkflowCompletionResponse], error)
+
+	// CallWorkflowAppStreaming 调用工作流应用，返回 SSE 流
+	CallWorkflowAppStreaming(ctx context.Context, req *CallWorkflowRequest) (chan *CallWorkflowChunkCompletionResponse, error)
 }
 
 func NewClient(baseUrl, email, password string) (Client, error) {
