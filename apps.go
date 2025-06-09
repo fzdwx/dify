@@ -1,9 +1,13 @@
 package dify
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
+	"regexp"
 	"resty.dev/v3"
+	"strings"
 )
 
 // CreateChatApp 创建聊天应用
@@ -184,6 +188,106 @@ func getDefaultFileUploadConfig() FileUploadConfig {
 		AllowedFileUploadMethods: []string{"remote_url", "local_file"},
 		NumberLimits:             3,
 	}
+}
+
+func (c *client) CallWorkflowAppBlocking(ctx context.Context, req *CallWorkflowRequest) (*Response[CallWorkflowCompletionResponse], error) {
+	var resultErr error
+	var resp = &CallWorkflowCompletionResponse{}
+	var finalResponse *resty.Response
+
+	req.ResponseMode = ResponseModeBlocking
+	_, err := c.executeConsoleWithRetry(func() (*resty.Response, error) {
+		response, err := c.console().
+			WithContext(ctx).
+			SetContentType("application/json").
+			SetBody(req).
+			SetHeader("Authorization", "Bearer "+req.Token).
+			SetResult(&CallWorkflowCompletionResponse{}).
+			Post(fmt.Sprintf("/v1/workflows/run"))
+
+		finalResponse = response
+
+		if err != nil {
+			return response, fmt.Errorf("failed to call workflow app: %w", err)
+		}
+
+		if response.IsError() {
+			resultErr = fmt.Errorf("failed to call workflow app with status %d: %s", response.StatusCode(), response.String())
+			return response, nil // Don't return error here, let executeConsoleWithRetry handle 401
+		}
+
+		resp = response.Result().(*CallWorkflowCompletionResponse)
+		return response, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if resultErr != nil {
+		return nil, resultErr
+	}
+	return buildResponse[CallWorkflowCompletionResponse](finalResponse, resp), nil
+}
+
+func (c *client) CallWorkflowAppStreaming(ctx context.Context, req *CallWorkflowRequest) (chan *CallWorkflowChunkCompletionResponse, error) {
+	var resultErr error
+	req.ResponseMode = ResponseModeStreaming
+	resp, err := c.executeConsoleWithRetry(func() (*resty.Response, error) {
+		response, err := c.console().
+			SetDoNotParseResponse(true).
+			WithContext(ctx).
+			SetContentType("application/json").
+			SetBody(req).
+			SetHeader("Authorization", "Bearer "+req.Token).
+			Post(fmt.Sprintf("/v1/workflows/run"))
+
+		if err != nil {
+			return response, fmt.Errorf("failed to call workflow app: %w", err)
+		}
+		if response.IsError() {
+			resultErr = fmt.Errorf("failed to call workflow app with status %d: %s", response.StatusCode(), response.String())
+			return response, nil // Don't return error here, let executeConsoleWithRetry handle 401
+		}
+		return response, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if resultErr != nil {
+		return nil, resultErr
+	}
+
+	// 处理 SSE 流
+	chunks := make(chan *CallWorkflowChunkCompletionResponse)
+	go func() {
+		defer close(chunks)
+		defer resp.Body.Close()
+
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if matched, _ := regexp.MatchString(`^(data|event|id|retry):\s?.*`, line); matched {
+				sseLine, err := parseSSELine(line)
+				if err != nil {
+					continue
+				}
+				chunks <- sseLine
+			}
+		}
+	}()
+	return chunks, nil
+}
+
+func parseSSELine(line string) (*CallWorkflowChunkCompletionResponse, error) {
+	if strings.HasPrefix(line, "data: ") {
+		rawJSON := strings.TrimPrefix(line, "data: ")
+		var msg CallWorkflowChunkCompletionResponse
+		err := json.Unmarshal([]byte(rawJSON), &msg)
+		if err != nil {
+			return nil, err
+		}
+		return &msg, nil
+	}
+	return nil, fmt.Errorf("invalid line: does not start with 'data: '")
 }
 
 func getDefaultAgentModeConfig() AgentModeConfig {

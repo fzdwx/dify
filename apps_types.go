@@ -167,3 +167,52 @@ type CreateAppAccessTokenResponse struct {
 	LastUsedAt *int64 `json:"last_used_at"`
 	CreatedAt  int64  `json:"created_at"`
 }
+
+type ResponseMode string
+
+const (
+	ResponseModeStreaming ResponseMode = "streaming"
+	ResponseModeBlocking  ResponseMode = "blocking"
+)
+
+type CallWorkflowRequest struct {
+	Inputs       interface{}  `json:"inputs"` // 输入数据
+	ResponseMode ResponseMode `json:"response_mode"`
+	User         string       `json:"user"`
+	Token        string       `json:"token,omitempty"` // 访问令牌
+}
+
+type CallWorkflowCompletionData struct {
+	ID          string                 `json:"id"`
+	WorkflowID  string                 `json:"workflow_id"`
+	Status      string                 `json:"status"` // 状态
+	Outputs     map[string]interface{} `json:"outputs"`
+	Error       string                 `json:"error"`
+	ElapsedTime float64                `json:"elapsed_time"`
+	TotalTokens int64                  `json:"total_tokens"` // 总令牌数
+	TotalSteps  int64                  `json:"total_steps"`  // 总步骤数
+	CreatedAt   int64                  `json:"created_at"`   // 创建时间
+	FinishedAt  int64                  `json:"finished_at"`
+}
+
+type CallWorkflowCompletionResponse struct {
+	WorkflowRunID string                     `json:"workflow_run_id"` // 工作流运行ID
+	TaskID        string                     `json:"task_id"`
+	Data          CallWorkflowCompletionData `json:"data"`
+}
+
+type CallWorkflowChunkCompletionResponse struct {
+	Event         string       `json:"event"`
+	WorkflowRunID string       `json:"workflow_run_id"`
+	TaskID        string       `json:"task_id"`
+	Data          WorkflowData `json:"data"`
+}
+
+type WorkflowData struct {
+	ID             string                 `json:"id"`
+	WorkflowID     string                 `json:"workflow_id"`
+	SequenceNumber int                    `json:"sequence_number"`
+	Status         string                 `json:"status"`
+	Outputs        map[string]interface{} `json:"outputs"` // 可根据需要更具体定义
+	Text           string                 `json:"text"`
+}
