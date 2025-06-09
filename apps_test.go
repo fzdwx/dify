@@ -202,7 +202,7 @@ func TestCallWorkflowAppBlocking(t *testing.T) {
 		},
 		ResponseMode: ResponseModeBlocking,
 		User:         "test_user",
-		Token:        "app-SwD6MzpqOwiOB2tEyS074VIi",
+		Token:        "your-token",
 	})
 	if err != nil {
 		t.Fatal("Failed to call workflow app blocking:", err)
@@ -232,7 +232,7 @@ func TestCallWorkflowAppStreaming(t *testing.T) {
 		},
 		ResponseMode: ResponseModeStreaming,
 		User:         "test_user",
-		Token:        "app-SwD6MzpqOwiOB2tEyS074VIi",
+		Token:        "your-token",
 	})
 	if err != nil {
 		t.Fatal("Failed to call workflow app blocking:", err)
